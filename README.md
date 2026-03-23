@@ -8,7 +8,18 @@ implementation as each CRM webhook parse might be different.
 
 ## Implementations ##
 
-Define each platform name on implemented class. Each webhook implementation can have its handler or custom one.
+Define interface for webhook handler that will be implemented by each CRM.
+
+```java
+public interface WebhookHandler {
+
+    public void handle(HttpServletRequest platformWebhookRequest);
+
+    public PlatformName getPlatformName();
+}
+```
+
+Define each CRM platform name on implemented class. Each webhook implementation can have its handler or custom one.
 
 ```java
 @Component
@@ -26,7 +37,7 @@ public class SalesforceWebhookHandler implements WebhookHandler {
 }
 ```
 
-Register beans on configurations:
+Register beans on configurations with mapping of platform name and its handler
 
 ```java
 @Bean
@@ -35,7 +46,8 @@ public Map<PlatformName, WebhookHandler> webhookHandlers(List<WebhookHandler> we
 }
 ```
 
-Autowired the map and Spring boot will find the above config bean that match the type:
+Autowired the map and Spring boot will find the above config bean that match the type.
+System will read the CRM platfrom name from input and get its handler in the map.
 
 ```java
 @Service
@@ -65,3 +77,22 @@ POST /api/v1/webhook/{crmName}
 ```
 
 This will look up with the implemented CRM name and handle accordingly.
+
+## Test ##
+
+Run the unit test to see the implementation
+
+```java
+@Test
+public void handleWebhook_whenPlatformNameFound_shouldLogCrmFound2(CapturedOutput output) {
+    webhookService.handleWebhook("zendesk", null);
+    assertTrue(output.getOut().contains("zendesk"));
+}
+
+@Test
+public void handleWebhook_whenPlatformNameNotFound_shouldLogNotFound(CapturedOutput output) {
+    webhookService.handleWebhook("keap", null);
+    assertFalse(output.getOut().contains("Webhook parse for keap called"));
+    assertTrue(output.getOut().contains("Failed to handle webhook from keap"));
+}
+```
